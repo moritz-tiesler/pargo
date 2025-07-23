@@ -43,7 +43,7 @@ type TemplateData struct {
 	// the default output file path
 	OutputFile string
 	// the struct data that was gathered from the processed file
-	StructData []StructData
+	StructData []*StructData
 	// the package name of the processed file
 	// this name will be added as the package name in the output file
 	Package string
@@ -123,9 +123,9 @@ func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), nil
 }
 
-func (g Generator) GenerateData() (TemplateData, error) {
+func (g Generator) GenerateData() (*TemplateData, error) {
 
-	var templData TemplateData
+	var templData *TemplateData
 	wd, err := os.Getwd()
 	if err != nil {
 		return templData, fmt.Errorf("Error getting current working directory: %v", err)
@@ -140,7 +140,7 @@ func (g Generator) GenerateData() (TemplateData, error) {
 		return templData, fmt.Errorf("Error parsing file %s: %v", inputFilePath, err)
 	}
 
-	var allStructData []StructData
+	var allStructData []*StructData
 	packageImports := make(map[string]struct{})
 
 	// Always need these for validation
@@ -205,7 +205,7 @@ func (g Generator) GenerateData() (TemplateData, error) {
 				})
 			}
 
-			allStructData = append(allStructData, StructData{
+			allStructData = append(allStructData, &StructData{
 				InputTypeName:  inputTypeName,
 				DomainTypeName: domainTypeName,
 				PackageName:    node.Name.Name,
@@ -217,11 +217,11 @@ func (g Generator) GenerateData() (TemplateData, error) {
 	}
 
 	generatedFileName := filepath.Join(
-		templData.Cwd,
+		wd,
 		strings.TrimSuffix(os.Getenv("GOFILE"), ".go")+"_gen.go",
 	)
 
-	templData = TemplateData{
+	templData = &TemplateData{
 		StructData:     allStructData,
 		Package:        outputPkg,
 		PackageImports: packageImports,
