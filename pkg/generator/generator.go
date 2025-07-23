@@ -148,7 +148,7 @@ func (g *Generator) Generate() {
 	}
 
 	// tmpl, err := template.ParseFiles(filepath.Join(filepath.Dir(wd), "templates", "generator_template.tmpl"))
-	tmpl, err := template.ParseFiles(GeneratorTemplate)
+	tmpl, err := template.New("generatorTemplate").Parse(GeneratorTemplate)
 	if err != nil {
 		log.Fatalf("Error parsing template: %v", err)
 	}
