@@ -60,8 +60,8 @@ type StructData struct {
 	PackageName    string
 	Imports        map[string]struct{} // Collect unique imports needed by generated code
 
-	InputFields  []InputFieldData  // Fields of the Input struct
-	DomainFields []DomainFieldData // Fields for the generated Domain struct
+	InputFields  []*InputFieldData  // Fields of the Input struct
+	DomainFields []*DomainFieldData // Fields for the generated Domain struct
 }
 
 // InputFieldData represents a field in the Input struct.
@@ -70,6 +70,7 @@ type InputFieldData struct {
 	FieldType   string
 	ValidateTag string
 	JSONTag     string
+	NewName     string
 }
 
 // DomainFieldData represents a field in the generated Domain struct.
@@ -77,6 +78,7 @@ type DomainFieldData struct {
 	FieldName string
 	FieldType string
 	Tag       string // keep all struct tags after validation
+	NewName   string
 }
 
 func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
@@ -167,8 +169,8 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 			inputTypeName := typeSpec.Name.Name
 			domainTypeName := inputTypeName + "Validated" // e.g., UserInput -> ValidatedUser
 
-			var inputFields []InputFieldData
-			var domainFields []DomainFieldData
+			var inputFields []*InputFieldData
+			var domainFields []*DomainFieldData
 
 			for _, field := range structType.Fields.List {
 				if len(field.Names) == 0 { // Embedded fields or unexported fields without name
@@ -179,7 +181,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 				validateTagValue := getTagValue(field.Tag, "validate")
 				jsonTagValue := getTagValue(field.Tag, "json")
 
-				currentInputField := InputFieldData{
+				currentInputField := &InputFieldData{
 					FieldName:   fieldName,
 					FieldType:   fieldType,
 					ValidateTag: validateTagValue,
@@ -198,7 +200,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 				}
 
 				// All other fields are copied directly with their original name and type
-				domainFields = append(domainFields, DomainFieldData{
+				domainFields = append(domainFields, &DomainFieldData{
 					FieldName: fieldName,
 					FieldType: fieldType,
 					Tag:       tagValue,

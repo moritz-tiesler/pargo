@@ -10,7 +10,11 @@ const GeneratorTemplate = `
 // Its existence guarantees that all data within it has passed initial validation rules.
 type {{.DomainTypeName}} struct {
 {{- range .DomainFields}}
+	{{- if .NewName | ne ""}}
+	{{.NewName}} {{.FieldType}} {{.Tag}}
+	{{- else}}
 	{{.FieldName}} {{.FieldType}} {{.Tag}}
+	{{- end}}
 {{- end}}
 }
 
@@ -27,7 +31,11 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 	{{- if .JSONTag | eq "-"}}
 	// Field '{{.FieldName}}' is omitted from {{$.DomainTypeName}} due to json:"-" tag.
 	{{- else}}
-	validated.{{.FieldName}} = input.{{.FieldName}} // Direct copy
+		{{- if .NewName | ne ""}}
+		validated.{{.NewName}} = input.{{.FieldName}} // Direct copy
+		{{- else}}
+		validated.{{.FieldName}} = input.{{.FieldName}} // Direct copy
+		{{- end}}
 	{{- end}}
 {{- end}}
 
