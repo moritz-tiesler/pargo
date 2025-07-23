@@ -79,8 +79,6 @@ type DomainFieldData struct {
 	Tag       string // keep all struct tags after validation
 }
 
-// TODOs:
-// -provide function options (WithPackage, WithImports, WithWrite)
 func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 
 	tmpl, err := template.New("generatorTemplate").Parse(GeneratorTemplate)
@@ -115,13 +113,13 @@ func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 		// strings.Sort(otherImports)
 
 		for _, imp := range stdImports {
-			buf.WriteString(fmt.Sprintf("    \"%s\"\n", imp))
+			buf.WriteString(fmt.Sprintf("    %s\n", imp))
 		}
 		if len(stdImports) > 0 && len(otherImports) > 0 {
 			buf.WriteString("\n") // Group imports
 		}
 		for _, imp := range otherImports {
-			buf.WriteString(fmt.Sprintf("    \"%s\"\n", imp))
+			buf.WriteString(fmt.Sprintf("    %s\n", imp))
 		}
 
 		buf.WriteString(")\n\n")
@@ -173,17 +171,21 @@ func (g Generator) GenerateData() (TemplateData, error) {
 	packageImports := make(map[string]struct{})
 
 	// Always need these for validation
-	packageImports["fmt"] = struct{}{}
-	packageImports["github.com/go-playground/validator/v10"] = struct{}{}
+	packageImports["\"fmt\""] = struct{}{}
+	packageImports["\"github.com/go-playground/validator/v10\""] = struct{}{}
 
 	// AST traversal to find struct types with "Input" suffix
-	// Todo collect used imports
+	// TODO: collect used imports
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
 			continue
 		}
 		for _, spec := range genDecl.Specs {
+			if importSpec, ok := spec.(*ast.ImportSpec); ok {
+				importPath := importSpec.Path.Value
+				packageImports[importPath] = struct{}{}
+			}
 			typeSpec, ok := spec.(*ast.TypeSpec)
 			if !ok {
 				continue
@@ -234,15 +236,15 @@ func (g Generator) GenerateData() (TemplateData, error) {
 				})
 
 				// Collect imports for standard types if needed (e.g., time.Time)
-				if strings.Contains(fieldType, ".") {
-					parts := strings.Split(fieldType, ".")
-					if len(parts) > 1 {
-						if parts[0] == "time" {
-							packageImports["time"] = struct{}{}
-						}
-						// Add other common packages here as needed (e.g., "encoding/json", "net/url")
-					}
-				}
+				// if strings.Contains(fieldType, ".") {
+				// 	parts := strings.Split(fieldType, ".")
+				// 	if len(parts) > 1 {
+				// 		if parts[0] == "time" {
+				// 			packageImports["time"] = struct{}{}
+				// 		}
+				// 		// Add other common packages here as needed (e.g., "encoding/json", "net/url")
+				// 	}
+				// }
 			}
 
 			allTemplateData = append(allTemplateData, StructData{
