@@ -2,7 +2,6 @@ package generator
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -15,21 +14,6 @@ import (
 	"strings"
 	"text/template"
 )
-
-type TemplateData struct {
-	// the file that was processed by go generate
-	File string
-	// the default output file path
-	OutputFile string
-	// the struct data that was gathered from the processed file
-	StructData []StructData
-	// the package name of the processed file
-	Package string
-	// the imports that will be added to the generated source
-	PackageImports map[string]struct{}
-	// the directory where go generate is currently executed
-	Cwd string
-}
 
 type Generator struct{}
 
@@ -51,6 +35,22 @@ func (g *Generator) Generate() error {
 
 	log.Printf("Successfully generated and formatted %s\n", templData.OutputFile)
 	return nil
+}
+
+type TemplateData struct {
+	// the file that was processed by go generate
+	File string
+	// the default output file path
+	OutputFile string
+	// the struct data that was gathered from the processed file
+	StructData []StructData
+	// the package name of the processed file
+	// this name will be added as the package name in the output file
+	Package string
+	// the imports that will be added to the generated source
+	PackageImports map[string]struct{}
+	// the directory where go generate is currently executed
+	Cwd string
 }
 
 // StructData holds the information needed to generate code for one Input struct.
@@ -80,7 +80,6 @@ type DomainFieldData struct {
 }
 
 func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
-
 	tmpl, err := template.New("generatorTemplate").Parse(GeneratorTemplate)
 	if err != nil {
 		log.Fatalf("Error parsing template: %v", err)
@@ -117,7 +116,6 @@ func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	// Write the formatted source to file
-
 	n, err := w.Write(formattedSource)
 	if err != nil {
 		return 0, err
@@ -142,20 +140,19 @@ func (g Generator) GenerateData() (TemplateData, error) {
 		return templData, fmt.Errorf("Error parsing file %s: %v", inputFilePath, err)
 	}
 
-	var allTemplateData []StructData
+	var allStructData []StructData
 	packageImports := make(map[string]struct{})
 
 	// Always need these for validation
 	packageImports["\"fmt\""] = struct{}{}
 	packageImports["\"github.com/go-playground/validator/v10\""] = struct{}{}
 
-	// AST traversal to find struct types with "Input" suffix
-	// TODO: collect used imports
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
 			continue
 		}
+
 		for _, spec := range genDecl.Specs {
 			if importSpec, ok := spec.(*ast.ImportSpec); ok {
 				importPath := importSpec.Path.Value
@@ -166,9 +163,6 @@ func (g Generator) GenerateData() (TemplateData, error) {
 				continue
 			}
 			structType, ok := typeSpec.Type.(*ast.StructType)
-			// if !ok || !strings.HasSuffix(typeSpec.Name.Name, "Input") {
-			// 	continue
-			// }
 
 			inputTypeName := typeSpec.Name.Name
 			domainTypeName := inputTypeName + "Validated" // e.g., UserInput -> ValidatedUser
@@ -209,20 +203,9 @@ func (g Generator) GenerateData() (TemplateData, error) {
 					FieldType: fieldType,
 					Tag:       tagValue,
 				})
-
-				// Collect imports for standard types if needed (e.g., time.Time)
-				// if strings.Contains(fieldType, ".") {
-				// 	parts := strings.Split(fieldType, ".")
-				// 	if len(parts) > 1 {
-				// 		if parts[0] == "time" {
-				// 			packageImports["time"] = struct{}{}
-				// 		}
-				// 		// Add other common packages here as needed (e.g., "encoding/json", "net/url")
-				// 	}
-				// }
 			}
 
-			allTemplateData = append(allTemplateData, StructData{
+			allStructData = append(allStructData, StructData{
 				InputTypeName:  inputTypeName,
 				DomainTypeName: domainTypeName,
 				PackageName:    node.Name.Name,
@@ -237,8 +220,9 @@ func (g Generator) GenerateData() (TemplateData, error) {
 		templData.Cwd,
 		strings.TrimSuffix(os.Getenv("GOFILE"), ".go")+"_gen.go",
 	)
+
 	templData = TemplateData{
-		StructData:     allTemplateData,
+		StructData:     allStructData,
 		Package:        outputPkg,
 		PackageImports: packageImports,
 		Cwd:            wd,
@@ -248,16 +232,14 @@ func (g Generator) GenerateData() (TemplateData, error) {
 	return templData, nil
 }
 
-// Helper functions remain the same
 func getTagValue(tag *ast.BasicLit, key string) string {
 	if tag == nil {
 		return ""
 	}
 	s := strings.Trim(tag.Value, "`")
-	parts := strings.Fields(s)
-	for _, part := range parts {
-		if strings.HasPrefix(part, key+":") {
-			val := strings.TrimPrefix(part, key+":")
+	for part := range strings.FieldsSeq(s) {
+		if after, ok := strings.CutPrefix(part, key+":"); ok {
+			val := after
 			return strings.Trim(val, "\"")
 		}
 	}
