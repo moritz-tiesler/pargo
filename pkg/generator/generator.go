@@ -94,35 +94,10 @@ func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 	// Write imports
 	if len(td.PackageImports) > 0 {
 		buf.WriteString("import (\n")
-		// Sort imports for consistent output
-		sortedImports := make([]string, 0, len(td.PackageImports))
-		for pkg := range td.PackageImports {
-			sortedImports = append(sortedImports, pkg)
+		for imp := range td.PackageImports {
+			buf.WriteString(fmt.Sprintf("%s\n", imp))
 		}
-		// Standard library imports first, then others
-		stdImports := []string{}
-		otherImports := []string{}
-		for _, imp := range sortedImports {
-			if !strings.Contains(imp, ".") { // Simple heuristic for stdlib vs. external
-				stdImports = append(stdImports, imp)
-			} else {
-				otherImports = append(otherImports, imp)
-			}
-		}
-		// strings.Sort(stdImports)
-		// strings.Sort(otherImports)
-
-		for _, imp := range stdImports {
-			buf.WriteString(fmt.Sprintf("    %s\n", imp))
-		}
-		if len(stdImports) > 0 && len(otherImports) > 0 {
-			buf.WriteString("\n") // Group imports
-		}
-		for _, imp := range otherImports {
-			buf.WriteString(fmt.Sprintf("    %s\n", imp))
-		}
-
-		buf.WriteString(")\n\n")
+		buf.WriteString(")\n")
 	}
 
 	buf.WriteString("var validate = validator.New()\n\n")
