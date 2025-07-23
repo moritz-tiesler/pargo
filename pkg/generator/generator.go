@@ -216,7 +216,9 @@ func (g *Generator) Generate() {
 	// Write the formatted source to file
 	generatedFileName := filepath.Join(
 		wd,
-		strings.TrimSuffix(os.Getenv("GOFILE"), ".go")+"_validate.go")
+		strings.TrimSuffix(os.Getenv("GOFILE"), ".go")+"_gen.go",
+	)
+
 	err = os.WriteFile(generatedFileName, formattedSource, 0644)
 	if err != nil {
 		log.Fatalf("Error writing generated file: %v", err)
