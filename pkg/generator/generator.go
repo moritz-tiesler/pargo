@@ -38,12 +38,22 @@ type InputFieldData struct {
 type DomainFieldData struct {
 	FieldName string
 	FieldType string
+	Tag       string // keep all struct tags after validation
 }
 
 type Generator struct {
 	OutputPackageName string
 }
 
+// TODOs:
+// -do not write immediatly, return []TemplateData
+// and allow user to work with this before writing
+//
+// -let user provide a writer and provde WriteTo() func
+//
+// -split file writing in steps and allow executing single steps
+//
+// -provide function options (WithPackage, WithImports, WithWrite)
 func (g *Generator) Generate() {
 	fmt.Printf("Running %s go on %s\n", os.Args[0], os.Getenv("GOFILE"))
 
@@ -107,19 +117,19 @@ func (g *Generator) Generate() {
 				}
 				fieldName := field.Names[0].Name
 				fieldType := exprToString(field.Type)
-				validateTag := getTagValue(field.Tag, "validate")
-				jsonTag := getTagValue(field.Tag, "json")
+				validateTagValue := getTagValue(field.Tag, "validate")
+				jsonTagValue := getTagValue(field.Tag, "json")
 
 				currentInputField := InputFieldData{
 					FieldName:   fieldName,
 					FieldType:   fieldType,
-					ValidateTag: validateTag,
-					JSONTag:     jsonTag,
+					ValidateTag: validateTagValue,
+					JSONTag:     jsonTagValue,
 				}
 				inputFields = append(inputFields, currentInputField)
 
 				// Determine domain fields based on json:"-" convention only
-				if jsonTag == "-" {
+				if jsonTagValue == "-" {
 					continue // Omit field from domain struct
 				}
 
@@ -127,6 +137,7 @@ func (g *Generator) Generate() {
 				domainFields = append(domainFields, DomainFieldData{
 					FieldName: fieldName,
 					FieldType: fieldType,
+					Tag:       field.Tag.Value,
 				})
 
 				// Collect imports for standard types if needed (e.g., time.Time)

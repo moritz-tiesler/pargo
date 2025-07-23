@@ -10,7 +10,7 @@ const GeneratorTemplate = `
 // Its existence guarantees that all data within it has passed initial validation rules.
 type {{.DomainTypeName}} struct {
 {{- range .DomainFields}}
-	{{.FieldName}} {{.FieldType}}
+	{{.FieldName}} {{.FieldType}} {{.Tag}}
 {{- end}}
 }
 
