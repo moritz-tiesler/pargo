@@ -14,11 +14,11 @@ var validate = validator.New()
 // Its existence guarantees that all data within it has passed initial validation rules.
 type UserInputValidated struct {
 	Email          string
-	HashedPassword string
+	Password       string
 	DisplayName    string
-	DateOfBirth    time.Time
-	CreatedAt      string
-	UnusedField    string
+	DateOfBirthStr string
+	TagsStr        []string
+	LastLoginTime  time.Time
 }
 
 // ToUserInputValidated takes a UserInput, validates it, and if successful,
@@ -28,23 +28,14 @@ func (input UserInput) ToUserInputValidated() (*UserInputValidated, error) {
 		return nil, fmt.Errorf("validation failed for UserInput: %w", err)
 	}
 
-	validated := &UserInputValidated{} // Use the generated domain type
-	validated.Email = input.Email      // Direct copy
-	// Custom transformation for field 'Password' handled by its type's ToValidated method.
-	PasswordTransformed, err := input.Password.ToValidated()
-	if err != nil {
-		return nil, fmt.Errorf("failed to transform field 'Password': %w", err)
-	}
-	validated.HashedPassword = PasswordTransformed
-	validated.DisplayName = input.DisplayName // Direct copy
-	// Custom transformation for field 'DateOfBirthStr' handled by its type's ToValidated method.
-	DateOfBirthStrTransformed, err := input.DateOfBirthStr.ToValidated()
-	if err != nil {
-		return nil, fmt.Errorf("failed to transform field 'DateOfBirthStr': %w", err)
-	}
-	validated.DateOfBirth = DateOfBirthStrTransformed
-	validated.CreatedAt = input.CreatedAt     // Direct copy
-	validated.UnusedField = input.UnusedField // Direct copy
+	validated := &UserInputValidated{}              // Use the generated domain type
+	validated.Email = input.Email                   // Direct copy
+	validated.Password = input.Password             // Direct copy
+	validated.DisplayName = input.DisplayName       // Direct copy
+	validated.DateOfBirthStr = input.DateOfBirthStr // Direct copy
+	validated.TagsStr = input.TagsStr               // Direct copy
+	// Field 'SecretKey' is omitted from UserInputValidated due to json:"-" tag.
+	validated.LastLoginTime = input.LastLoginTime // Direct copy
 
 	return validated, nil
 }

@@ -25,17 +25,12 @@ type TemplateData struct {
 	DomainFields []DomainFieldData // Fields for the generated Domain struct
 }
 
-// InputFieldData represents a field in the Input struct, with its original tags and transformation intent.
+// InputFieldData represents a field in the Input struct.
 type InputFieldData struct {
 	FieldName   string
-	FieldType   string // The actual type string (e.g., "myapp.PasswordInput")
+	FieldType   string
 	ValidateTag string
 	JSONTag     string
-
-	IsCustomTransformType bool // True if this field uses one of our custom input types
-	// Target field name and type for the domain struct (inferred from custom type's ToValidated return)
-	TargetFieldName string
-	TargetFieldType string
 }
 
 // DomainFieldData represents a field in the generated Domain struct.
@@ -44,27 +39,14 @@ type DomainFieldData struct {
 	FieldType string
 }
 
-// Map of custom input types to their target domain field name and type
-// This is where the generator "knows" about your custom transformation types.
-var customTransformTypeMap = map[string]struct {
-	DomainFieldName string
-	DomainFieldType string
-	RequiredImport  string // E.g., "time" for time.Time
-}{
-	"myapp.PasswordInput":    {"HashedPassword", "string", ""},
-	"myapp.DateOfBirthInput": {"DateOfBirth", "time.Time", "time"},
-	"main.TagsInput":         {"Tags", "[]string", ""}, // TagsInput.ToValidated returns []string, no extra import needed beyond myapp
-	// Add more mappings here for other custom input types
-}
-
 func main() {
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Error getting current working directory: %v", err)
 	}
 
-	inputFilePath := filepath.Join(wd, "input.go")
-	generatedFileName := filepath.Join(wd, "input_validation_gen.go")
+	inputFilePath := filepath.Join(filepath.Dir(wd), "input", "input.go")
+	generatedFileName := filepath.Join(filepath.Dir(wd), "input", "input_validation_gen.go")
 
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, inputFilePath, nil, parser.ParseComments)
@@ -75,9 +57,11 @@ func main() {
 	var allTemplateData []TemplateData
 	packageImports := make(map[string]struct{})
 
+	// Always need these for validation
 	packageImports["fmt"] = struct{}{}
 	packageImports["github.com/go-playground/validator/v10"] = struct{}{}
 
+	// AST traversal to find struct types with "Input" suffix
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
@@ -104,65 +88,38 @@ func main() {
 					continue
 				}
 				fieldName := field.Names[0].Name
-				fieldType := exprToString(field.Type) // e.g., "string", "myapp.PasswordInput"
+				fieldType := exprToString(field.Type)
 				validateTag := getTagValue(field.Tag, "validate")
 				jsonTag := getTagValue(field.Tag, "json")
 
-				isCustom := false
-				targetFieldName := fieldName
-				targetFieldType := fieldType
-
-				// Check if the field's type is one of our known custom transformation types
-				if transformInfo, found := customTransformTypeMap[node.Name.Name+"."+fieldType]; found {
-					isCustom = true
-					targetFieldName = transformInfo.DomainFieldName
-					targetFieldType = transformInfo.DomainFieldType
-					if transformInfo.RequiredImport != "" {
-						packageImports[transformInfo.RequiredImport] = struct{}{}
-					}
-					// Add the package where custom input types are defined
-					packageImports[node.Name.Name] = struct{}{} // Assuming custom types are in the same package as Input structs
-				} else {
-					// Collect imports for standard types if not already covered by custom types
-					if strings.Contains(fieldType, ".") {
-						parts := strings.Split(fieldType, ".")
-						if len(parts) > 1 {
-							if parts[0] == "time" {
-								packageImports["time"] = struct{}{}
-							}
-							// Add other common packages here as needed
-						}
-					}
-				}
-
 				currentInputField := InputFieldData{
-					FieldName:             fieldName,
-					FieldType:             fieldType,
-					ValidateTag:           validateTag,
-					JSONTag:               jsonTag,
-					IsCustomTransformType: isCustom,
-					TargetFieldName:       targetFieldName, // Will be used by template for direct copy or custom call
-					TargetFieldType:       targetFieldType, // Will be used by template for domain struct def
+					FieldName:   fieldName,
+					FieldType:   fieldType,
+					ValidateTag: validateTag,
+					JSONTag:     jsonTag,
 				}
 				inputFields = append(inputFields, currentInputField)
 
-				// Determine domain fields for the generated struct definition
+				// Determine domain fields based on json:"-" convention only
 				if jsonTag == "-" {
-					continue // Omit field from domain struct if json:"-"
+					continue // Omit field from domain struct
 				}
 
-				// If it's a custom transform type, use its mapped domain field name/type
-				if isCustom {
-					domainFields = append(domainFields, DomainFieldData{
-						FieldName: currentInputField.TargetFieldName,
-						FieldType: currentInputField.TargetFieldType,
-					})
-				} else {
-					// Otherwise, direct copy for the domain struct definition
-					domainFields = append(domainFields, DomainFieldData{
-						FieldName: fieldName,
-						FieldType: fieldType,
-					})
+				// All other fields are copied directly with their original name and type
+				domainFields = append(domainFields, DomainFieldData{
+					FieldName: fieldName,
+					FieldType: fieldType,
+				})
+
+				// Collect imports for standard types if needed (e.g., time.Time)
+				if strings.Contains(fieldType, ".") {
+					parts := strings.Split(fieldType, ".")
+					if len(parts) > 1 {
+						if parts[0] == "time" {
+							packageImports["time"] = struct{}{}
+						}
+						// Add other common packages here as needed (e.g., "encoding/json", "net/url")
+					}
 				}
 			}
 
@@ -177,7 +134,6 @@ func main() {
 		}
 	}
 
-	fmt.Println(wd)
 	tmpl, err := template.ParseFiles(filepath.Join(filepath.Dir(wd), "templates", "generator_template.tmpl"))
 	if err != nil {
 		log.Fatalf("Error parsing template: %v", err)
@@ -187,16 +143,19 @@ func main() {
 	buf.WriteString("// Code generated by go generate; DO NOT EDIT.\n")
 	buf.WriteString(fmt.Sprintf("package %s\n\n", node.Name.Name))
 
+	// Write imports
 	if len(packageImports) > 0 {
 		buf.WriteString("import (\n")
+		// Sort imports for consistent output
 		sortedImports := make([]string, 0, len(packageImports))
 		for pkg := range packageImports {
 			sortedImports = append(sortedImports, pkg)
 		}
+		// Standard library imports first, then others
 		stdImports := []string{}
 		otherImports := []string{}
 		for _, imp := range sortedImports {
-			if !strings.Contains(imp, ".") {
+			if !strings.Contains(imp, ".") { // Simple heuristic for stdlib vs. external
 				stdImports = append(stdImports, imp)
 			} else {
 				otherImports = append(otherImports, imp)
@@ -209,7 +168,7 @@ func main() {
 			buf.WriteString(fmt.Sprintf("    \"%s\"\n", imp))
 		}
 		if len(stdImports) > 0 && len(otherImports) > 0 {
-			buf.WriteString("\n")
+			buf.WriteString("\n") // Group imports
 		}
 		for _, imp := range otherImports {
 			buf.WriteString(fmt.Sprintf("    \"%s\"\n", imp))
@@ -226,12 +185,14 @@ func main() {
 		}
 	}
 
+	// Format the generated code
 	formattedSource, err := format.Source(buf.Bytes())
 	if err != nil {
 		log.Printf("Failed to format generated code. Raw content:\n%s\n", buf.String())
 		log.Fatalf("Error formatting generated Go code: %v", err)
 	}
 
+	// Write the formatted source to file
 	err = os.WriteFile(generatedFileName, formattedSource, 0644)
 	if err != nil {
 		log.Fatalf("Error writing generated file: %v", err)
@@ -240,7 +201,7 @@ func main() {
 	log.Printf("Successfully generated and formatted %s\n", generatedFileName)
 }
 
-// Helper functions (getTagValue, exprToString) remain the same.
+// Helper functions remain the same
 func getTagValue(tag *ast.BasicLit, key string) string {
 	if tag == nil {
 		return ""

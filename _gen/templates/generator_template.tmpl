@@ -23,13 +23,6 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 {{- range .InputFields}}
 	{{- if .JSONTag | eq "-"}}
 	// Field '{{.FieldName}}' is omitted from {{$.DomainTypeName}} due to json:"-" tag.
-	{{- else if .IsCustomTransformType}}
-		// Custom transformation for field '{{.FieldName}}' handled by its type's ToValidated method.
-		{{.FieldName}}Transformed, err := input.{{.FieldName}}.ToValidated()
-		if err != nil {
-			return nil, fmt.Errorf("failed to transform field '{{.FieldName}}': %w", err)
-		}
-		validated.{{.TargetFieldName}} = {{.FieldName}}Transformed
 	{{- else}}
 	validated.{{.FieldName}} = input.{{.FieldName}} // Direct copy
 	{{- end}}
