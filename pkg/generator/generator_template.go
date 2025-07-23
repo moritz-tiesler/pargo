@@ -1,3 +1,6 @@
+package generator
+
+const GeneratorTemplate = `
 {{/*
 	Template for generating ValidatedX struct definitions and ToValidatedX methods.
 	Data is of type TemplateData
@@ -30,3 +33,4 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 
 	return validated, nil
 }
+`

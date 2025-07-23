@@ -45,9 +45,6 @@ func main() {
 	g.Generate()
 }
 
-//go:embed templates/generator_template.tmpl
-var generatorTemplate string
-
 type Generator struct{}
 
 func (g *Generator) Generate() {
@@ -151,7 +148,7 @@ func (g *Generator) Generate() {
 	}
 
 	// tmpl, err := template.ParseFiles(filepath.Join(filepath.Dir(wd), "templates", "generator_template.tmpl"))
-	tmpl, err := template.ParseFiles(generatorTemplate)
+	tmpl, err := template.ParseFiles(GeneratorTemplate)
 	if err != nil {
 		log.Fatalf("Error parsing template: %v", err)
 	}
