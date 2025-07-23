@@ -41,9 +41,7 @@ type DomainFieldData struct {
 	Tag       string // keep all struct tags after validation
 }
 
-type Generator struct {
-	OutputPackageName string
-}
+type Generator struct{}
 
 // TODOs:
 // -do not write immediatly, return []TemplateData
@@ -64,19 +62,14 @@ func (g *Generator) Generate() {
 	fmt.Printf("  cwd = %s\n", wd)
 	fmt.Printf("  os.Args = %#v\n", os.Args)
 
-	// inputFilePath := filepath.Join(filepath.Dir(wd), "input", "input.go")
 	inputFilePath := filepath.Join(wd, os.Getenv("GOFILE"))
+	outputPkg := os.Getenv("GOPACKAGE")
+
 	fmt.Printf("reading %s\n", inputFilePath)
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, inputFilePath, nil, parser.ParseComments)
 	if err != nil {
 		log.Fatalf("Error parsing file %s: %v", inputFilePath, err)
-	}
-	var outputPkg string
-	if g.OutputPackageName == "" {
-		outputPkg = node.Name.Name
-	} else {
-		outputPkg = g.OutputPackageName
 	}
 
 	var allTemplateData []TemplateData
@@ -85,9 +78,6 @@ func (g *Generator) Generate() {
 	// Always need these for validation
 	packageImports["fmt"] = struct{}{}
 	packageImports["github.com/go-playground/validator/v10"] = struct{}{}
-	if g.OutputPackageName != "" {
-		packageImports[fmt.Sprintf("%s", g.OutputPackageName)] = struct{}{}
-	}
 
 	// AST traversal to find struct types with "Input" suffix
 	for _, decl := range node.Decls {
