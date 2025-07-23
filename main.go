@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	myapp "pargo/input"
+	myapp "pargo/_gen/input"
 )
 
 func main() {
