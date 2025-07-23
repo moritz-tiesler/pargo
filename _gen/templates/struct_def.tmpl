@@ -1,8 +1,0 @@
-{{/*
-	{.DomainTypeName} represents a validated {.InputTypeName}
-*/}}
-type {{.DomainTypeName}} struct {
-{{range .DomainFields}}
-    {{.FieldName}} {{.FieldType}}
-{{end}}
-}

@@ -1,4 +1,4 @@
-package main
+package generator
 
 import (
 	"bytes"
@@ -40,13 +40,25 @@ type DomainFieldData struct {
 }
 
 func main() {
+	g := Generator{}
+	g.Generate()
+}
+
+type Generator struct{}
+
+func (g *Generator) Generate() {
+	fmt.Printf("Running %s go on %s\n", os.Args[0], os.Getenv("GOFILE"))
+
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Error getting current working directory: %v", err)
 	}
+	fmt.Printf("  cwd = %s\n", wd)
+	fmt.Printf("  os.Args = %#v\n", os.Args)
 
-	inputFilePath := filepath.Join(filepath.Dir(wd), "input", "input.go")
-	generatedFileName := filepath.Join(filepath.Dir(wd), "input", "input_validation_gen.go")
+	// inputFilePath := filepath.Join(filepath.Dir(wd), "input", "input.go")
+	inputFilePath := filepath.Join(wd, os.Getenv("GOFILE"))
+	generatedFileName := filepath.Join(filepath.Dir(wd), "gen", os.Getenv("GOFILE"))
 
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, inputFilePath, nil, parser.ParseComments)
