@@ -15,7 +15,29 @@ import (
 	"text/template"
 )
 
-type Generator struct{}
+type options struct {
+	castFields bool
+}
+
+type opt func(*options)
+
+type Generator struct {
+	opts options
+}
+
+func WithTypeCast() opt {
+	return func(o *options) {
+		o.castFields = true
+	}
+}
+
+func New(opts ...opt) *Generator {
+	baseOpts := &options{castFields: false}
+	for _, o := range opts {
+		o(baseOpts)
+	}
+	return &Generator{opts: *baseOpts}
+}
 
 func (g *Generator) Generate() error {
 	templData, err := g.GenerateData()
@@ -51,6 +73,8 @@ type TemplateData struct {
 	PackageImports map[string]struct{}
 	// the directory where go generate is currently executed
 	Cwd string
+
+	cast bool
 }
 
 // StructData holds the information needed to generate code for one Input struct.
@@ -112,7 +136,14 @@ func (td *TemplateData) GenerateSource() ([]byte, error) {
 	// TODO check len(td.StructData),
 	// what to write to buf if len == 0?
 	var buf bytes.Buffer
-	tmpl, err := template.New("generatorTemplate").Parse(GeneratorTemplate)
+	var tmpl *template.Template
+	var err error
+
+	if td.cast {
+		tmpl, err = template.New("generatorTemplate").Parse(GeneratorCastTemplate)
+	} else {
+		tmpl, err = template.New("generatorTemplate").Parse(GeneratorTemplate)
+	}
 	if err != nil {
 		return buf.Bytes(), err
 	}
@@ -254,6 +285,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 		Cwd:            wd,
 		File:           inputFilePath,
 		OutputFile:     generatedFileName,
+		cast:           g.opts.castFields,
 	}
 	return templData, nil
 }
