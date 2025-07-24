@@ -82,9 +82,9 @@ type DomainFieldData struct {
 	NewName string
 }
 
-func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
+func (td *TemplateData) WriteTo(w io.Writer) (int64, error) {
 
-	source, err := td.generateSource()
+	source, err := td.GenerateSource()
 	if err != nil {
 		return 0, fmt.Errorf("Error generating source: %s", err)
 	}
@@ -96,8 +96,8 @@ func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), nil
 }
 
-func (td TemplateData) Read(p []byte) (int, error) {
-	source, err := td.generateSource()
+func (td *TemplateData) Read(p []byte) (int, error) {
+	source, err := td.GenerateSource()
 	if err != nil {
 		return 0, fmt.Errorf("Error generating source: %s", err)
 	}
@@ -107,8 +107,10 @@ func (td TemplateData) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func (td TemplateData) generateSource() ([]byte, error) {
+func (td *TemplateData) GenerateSource() ([]byte, error) {
 
+	// TODO check len(td.StructData),
+	// what to write to buf if len == 0?
 	var buf bytes.Buffer
 	tmpl, err := template.New("generatorTemplate").Parse(GeneratorTemplate)
 	if err != nil {
