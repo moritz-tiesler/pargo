@@ -78,7 +78,9 @@ type DomainFieldData struct {
 	FieldName string
 	FieldType string
 	Tag       string // keep all struct tags after validation
-	NewName   string
+	// TODO: provide rename function that does the looping over
+	// []InputfieldData and []DomainFieldData
+	NewName string
 }
 
 func (td TemplateData) WriteTo(w io.Writer) (int64, error) {

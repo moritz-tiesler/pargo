@@ -27,15 +27,11 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 
 	validated := &{{.DomainTypeName}}{} // Use the generated domain type
 
-{{- range .InputFields}}
-	{{- if .JSONTag | eq "-"}}
-	// Field '{{.FieldName}}' is omitted from {{$.DomainTypeName}} due to json:"-" tag.
+{{- range .DomainFields}}
+	{{- if .NewName | ne ""}}
+	validated.{{.NewName}} = input.{{.FieldName}} // Direct copy
 	{{- else}}
-		{{- if .NewName | ne ""}}
-		validated.{{.NewName}} = input.{{.FieldName}} // Direct copy
-		{{- else}}
-		validated.{{.FieldName}} = input.{{.FieldName}} // Direct copy
-		{{- end}}
+	validated.{{.FieldName}} = input.{{.FieldName}} // Direct copy
 	{{- end}}
 {{- end}}
 
