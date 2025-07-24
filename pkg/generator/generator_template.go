@@ -11,9 +11,9 @@ const GeneratorTemplate = `
 type {{.DomainTypeName}} struct {
 {{- range .DomainFields}}
 	{{- if .NewName | ne ""}}
-	{{.NewName}} {{.FieldType}} {{.Tag}}
+	{{.NewName}} {{.NewName}}Validated {{.Tag}}
 	{{- else}}
-	{{.FieldName}} {{.FieldType}} {{.Tag}}
+	{{.FieldName}} {{.FieldName}}Validated {{.Tag}}
 	{{- end}}
 {{- end}}
 }
@@ -29,12 +29,20 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 
 {{- range .DomainFields}}
 	{{- if .NewName | ne ""}}
-	validated.{{.NewName}} = input.{{.FieldName}} // Direct copy
+	validated.{{.NewName}}= {{.NewName}}Validated(input.{{.FieldName}}) // Direct copy
 	{{- else}}
-	validated.{{.FieldName}} = input.{{.FieldName}} // Direct copy
+	validated.{{.FieldName}} = {{.FieldName}}Validated(input.{{.FieldName}}) // Direct copy
 	{{- end}}
 {{- end}}
 
 	return validated, nil
 }
+
+{{- range .DomainFields }}
+{{- if .NewName | ne ""}}
+type {{.NewName}}Validated {{.FieldType}} // Direct copy
+{{- else}}
+type {{.FieldName}}Validated {{.FieldType}} // Direct copy
+{{- end}}
+{{- end }}
 `
