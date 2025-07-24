@@ -84,6 +84,32 @@ type DomainFieldData struct {
 }
 
 func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
+
+	source, err := td.generateSource()
+	if err != nil {
+		return 0, fmt.Errorf("Error generating source: %s", err)
+	}
+	// Write the formatted source to file
+	n, err := w.Write(source)
+	if err != nil {
+		return 0, err
+	}
+	return int64(n), nil
+}
+
+func (td TemplateData) Read(p []byte) (int, error) {
+	source, err := td.generateSource()
+	if err != nil {
+		return 0, fmt.Errorf("Error generating source: %s", err)
+	}
+
+	n := copy(p, source)
+
+	return n, nil
+}
+
+func (td TemplateData) generateSource() ([]byte, error) {
+
 	tmpl, err := template.New("generatorTemplate").Parse(GeneratorTemplate)
 	if err != nil {
 		log.Fatalf("Error parsing template: %v", err)
@@ -108,23 +134,18 @@ func (td TemplateData) WriteTo(w io.Writer) (int64, error) {
 	for _, d := range td.StructData {
 		err = tmpl.Execute(&buf, d)
 		if err != nil {
-			log.Fatalf("Error executing template for %s: %v", d.InputTypeName, err)
+			return []byte{}, fmt.Errorf("Error executing template for %s: %v", d.InputTypeName, err)
 		}
 	}
 
 	// Format the generated code
 	formattedSource, err := format.Source(buf.Bytes())
 	if err != nil {
-		log.Printf("Failed to format generated code. Raw content:\n%s\n", buf.String())
-		log.Fatalf("Error formatting generated Go code: %v", err)
-	}
 
-	// Write the formatted source to file
-	n, err := w.Write(formattedSource)
-	if err != nil {
-		return 0, err
+		log.Fatalf("Error formatting generated Go code: %v", err)
+		return []byte{}, err
 	}
-	return int64(n), nil
+	return formattedSource, nil
 }
 
 func (g Generator) GenerateData() (*TemplateData, error) {
