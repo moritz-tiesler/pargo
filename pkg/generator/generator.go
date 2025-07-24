@@ -70,7 +70,6 @@ type InputFieldData struct {
 	FieldType   string
 	ValidateTag string
 	JSONTag     string
-	NewName     string
 }
 
 // DomainFieldData represents a field in the generated Domain struct.
