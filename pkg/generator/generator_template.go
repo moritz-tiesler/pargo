@@ -50,9 +50,9 @@ const GeneratorCastTemplate = `
 type {{.DomainTypeName}} struct {
 {{- range .DomainFields}}
 	{{- if .NewName | ne ""}}
-	{{.NewName}} {{.NewName}}Validated {{.Tag}}
+	{{.NewName}} {{.NewName}}Valid{{.Tag}}
 	{{- else}}
-	{{.FieldName}} {{.FieldName}}Validated {{.Tag}}
+	{{.FieldName}} {{.FieldName}}Valid{{.Tag}}
 	{{- end}}
 {{- end}}
 }
@@ -68,9 +68,9 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 
 {{- range .DomainFields}}
 	{{- if .NewName | ne ""}}
-	validated.{{.NewName}}= {{.NewName}}Validated(input.{{.FieldName}}) // Direct copy
+	validated.{{.NewName}}= {{.NewName}}Valid(input.{{.FieldName}}) // Direct copy
 	{{- else}}
-	validated.{{.FieldName}} = {{.FieldName}}Validated(input.{{.FieldName}}) // Direct copy
+	validated.{{.FieldName}} = {{.FieldName}}Valid(input.{{.FieldName}}) // Direct copy
 	{{- end}}
 {{- end}}
 
@@ -79,9 +79,9 @@ func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, e
 
 {{- range .DomainFields }}
 {{- if .NewName | ne ""}}
-type {{.NewName}}Validated {{.FieldType}} // Direct copy
+type {{.NewName}}Valid {{.FieldType}} // Direct copy
 {{- else}}
-type {{.FieldName}}Validated {{.FieldType}} // Direct copy
+type {{.FieldName}}Valid {{.FieldType}} // Direct copy
 {{- end}}
 {{- end }}
 `
