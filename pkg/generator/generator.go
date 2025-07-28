@@ -16,30 +16,33 @@ import (
 
 type Generator struct{}
 
-func (g *Generator) Generate() error {
+// Generate() generates the source code, formats it with format.Source(),
+// writes the formatted source code to a new file, and returns the name
+// of the new file.
+func (g *Generator) Generate() (string, error) {
 	templData, err := g.GenerateData()
 	if err != nil {
-		return fmt.Errorf("failed to generate data: %s", err)
+		return "", fmt.Errorf("failed to generate data: %s", err)
 	}
 
-	buf, err := templData.GenerateSource()
+	buf, err := templData.ToSource()
 	formatted, err := formatSource(buf)
 	if err != nil {
-		return fmt.Errorf("failed to format source: %s", err)
+		return "", fmt.Errorf("failed to format source: %s", err)
 	}
 
 	f, err := os.OpenFile(templData.OutputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("Error opening file %s: %v", templData.OutputFile, err)
+		return "", fmt.Errorf("Error opening file %s: %v", templData.OutputFile, err)
 	}
 
 	_, err = f.Write(formatted)
 	if err != nil {
-		return fmt.Errorf("Error writing file %s: %v", templData.OutputFile, err)
+		return f.Name(), fmt.Errorf("Error writing file %s: %v", templData.OutputFile, err)
 	}
 
 	log.Printf("Successfully generated and formatted %s\n", templData.OutputFile)
-	return nil
+	return f.Name(), nil
 }
 
 type TemplateData struct {
@@ -87,7 +90,9 @@ type DomainFieldData struct {
 	NewName string
 }
 
-func (td *TemplateData) GenerateSource() (bytes.Buffer, error) {
+// ToSource() returns a bytes.Buffer containing the unformatted
+// source code.
+func (td *TemplateData) ToSource() (bytes.Buffer, error) {
 
 	// TODO check len(td.StructData),
 	// what to write to buf if len == 0?
@@ -122,6 +127,9 @@ func (td *TemplateData) GenerateSource() (bytes.Buffer, error) {
 	return buf, nil
 }
 
+// GenerateData() parses the file currently being processed via 'go generate' and
+// generates the structures that will be used to generate the new struct
+// definitions.
 func (g Generator) GenerateData() (*TemplateData, error) {
 
 	var templData *TemplateData
@@ -232,6 +240,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 	return templData, nil
 }
 
+// helper for parsing struct tag values
 func getTagValue(tag *ast.BasicLit, key string) string {
 	if tag == nil {
 		return ""
