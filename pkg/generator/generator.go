@@ -114,7 +114,9 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 		for _, spec := range genDecl.Specs {
 			if importSpec, ok := spec.(*ast.ImportSpec); ok {
 				importPath := importSpec.Path.Value
-				packageImports[importPath] = struct{}{}
+				if !strings.Contains(importPath, "go-playground/validator") {
+					packageImports[importPath] = struct{}{}
+				}
 			}
 			typeSpec, ok := spec.(*ast.TypeSpec)
 			if !ok {
