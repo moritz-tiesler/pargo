@@ -45,51 +45,6 @@ func (g *Generator) Generate() (string, error) {
 	return f.Name(), nil
 }
 
-type TemplateData struct {
-	// the file that was processed by go generate
-	File string
-	// the default output file path
-	OutputFile string
-	// the struct data that was gathered from the processed file
-	StructData []*StructData
-	// the package name of the processed file
-	// this name will be added as the package name in the output file
-	Package string
-	// the imports that will be added to the generated source
-	PackageImports map[string]struct{}
-	// the directory where go generate is currently executed
-	Cwd string
-}
-
-// StructData holds the information needed to generate code for one Input struct.
-type StructData struct {
-	InputTypeName  string
-	DomainTypeName string
-	PackageName    string
-	Imports        map[string]struct{} // Collect unique imports needed by generated code
-
-	InputFields  []*InputFieldData  // Fields of the Input struct
-	DomainFields []*DomainFieldData // Fields for the generated Domain struct
-}
-
-// InputFieldData represents a field in the Input struct.
-type InputFieldData struct {
-	FieldName   string
-	FieldType   string
-	ValidateTag string
-	JSONTag     string
-}
-
-// DomainFieldData represents a field in the generated Domain struct.
-type DomainFieldData struct {
-	FieldName string
-	FieldType string
-	Tag       string // keep all struct tags after validation
-	// TODO: provide rename function that does the looping over
-	// []InputfieldData and []DomainFieldData
-	NewName string
-}
-
 // ToSource() returns a bytes.Buffer containing the unformatted
 // source code.
 func (td *TemplateData) ToSource() (bytes.Buffer, error) {
@@ -238,6 +193,51 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 	}
 
 	return templData, nil
+}
+
+type TemplateData struct {
+	// the file that was processed by go generate
+	File string
+	// the default output file path
+	OutputFile string
+	// the struct data that was gathered from the processed file
+	StructData []*StructData
+	// the package name of the processed file
+	// this name will be added as the package name in the output file
+	Package string
+	// the imports that will be added to the generated source
+	PackageImports map[string]struct{}
+	// the directory where go generate is currently executed
+	Cwd string
+}
+
+// StructData holds the information needed to generate code for one Input struct.
+type StructData struct {
+	InputTypeName  string
+	DomainTypeName string
+	PackageName    string
+	Imports        map[string]struct{} // Collect unique imports needed by generated code
+
+	InputFields  []*InputFieldData  // Fields of the Input struct
+	DomainFields []*DomainFieldData // Fields for the generated Domain struct
+}
+
+// InputFieldData represents a field in the Input struct.
+type InputFieldData struct {
+	FieldName   string
+	FieldType   string
+	ValidateTag string
+	JSONTag     string
+}
+
+// DomainFieldData represents a field in the generated Domain struct.
+type DomainFieldData struct {
+	FieldName string
+	FieldType string
+	Tag       string // keep all struct tags after validation
+	// TODO: provide rename function that does the looping over
+	// []InputfieldData and []DomainFieldData
+	NewName string
 }
 
 // helper for parsing struct tag values
