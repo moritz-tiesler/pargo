@@ -41,7 +41,6 @@ func (g *Generator) Generate() (string, error) {
 		return f.Name(), fmt.Errorf("Error writing file %s: %v", templData.OutputFile, err)
 	}
 
-	log.Printf("Successfully generated and formatted %s\n", templData.OutputFile)
 	return f.Name(), nil
 }
 
