@@ -21,7 +21,7 @@ type {{.DomainTypeName}} struct {
 // To{{.DomainTypeName}} takes a {{.InputTypeName}}, validates it, and if successful,
 // converts it into a {{.DomainTypeName}}.
 func (input {{.InputTypeName}}) To{{.DomainTypeName}}() (*{{.DomainTypeName}}, error) {
-	if err := validate.Struct(input); err != nil {
+	if err := VALIDATE.Struct(input); err != nil {
 		return nil, fmt.Errorf("validation failed for {{.InputTypeName}}: %w", err)
 	}
 
