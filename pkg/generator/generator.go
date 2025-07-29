@@ -68,8 +68,6 @@ func (td *TemplateData) ToSource() (bytes.Buffer, error) {
 		buf.WriteString(")\n")
 	}
 
-	buf.WriteString("var validate = validator.New()\n\n")
-
 	for _, d := range td.StructData {
 		err = tmpl.Execute(&buf, d)
 		if err != nil {
@@ -106,7 +104,6 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 
 	// Always need these for validation
 	packageImports["\"fmt\""] = struct{}{}
-	packageImports["\"github.com/go-playground/validator/v10\""] = struct{}{}
 
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
