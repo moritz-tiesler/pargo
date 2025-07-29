@@ -10,10 +10,7 @@ Validate once and use the new types that encode a successful validation.
 ```bash
 go get github.com/moritz-tiesler/pargo@latest
 ```
- 
-
 ## Example
-
 
 ### Create a go file that will call ```pargo```
 ```bash
@@ -103,7 +100,6 @@ user.go  user_gen.go
 
 ```go
 // main.go
-
 package main
 
 import (
