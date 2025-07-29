@@ -1,6 +1,7 @@
 # pargo
 
 A package for generating new struct definitions for types that use [**validator**](https://github.com/go-playground/validator) tags.
+
 Validate once and use the new types that encode a successful validation.
 
 
@@ -14,7 +15,7 @@ go get github.com/moritz-tiesler/pargo@latest
 ## Example
 
 
-create a go file that will call ```pargo```. Example
+### Create a go file that will call ```pargo```
 ```bash
 $ mkdir generator
 $ cd generator && touch generate.go
@@ -26,10 +27,7 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
-
-	"os"
 
 	"github.com/moritz-tiesler/pargo/pkg/generator"
 )
@@ -38,7 +36,7 @@ func main() {
 	gen := generator.Generator{}
 
 	fmt.Println("invoking pargo generator")
-    newFile,err := gen.Generate()
+    	newFile, err := gen.Generate()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,7 +46,7 @@ func main() {
 
 ```
 
-create a file with your type definitions
+### Create a file with your type definitions
 
 ```bash
 $ mkdir models
@@ -84,10 +82,46 @@ type Adress struct {
 
 
 
-run ```go generate``` in your project root
+### Run ```go generate``` in your project root
 
 ```bash
 go generate ./...
 ```
 
 A file will be created in the ```models/``` directory
+
+```bash
+$ ls models
+user.go  user_gen.go
+```
+
+### Use the new types definitions
+
+```go
+// main.go
+
+package main
+
+import (
+	"fmt"
+	"pargo_use/models"
+)
+
+func main() {
+	u := models.Userstruct{
+		DisplayName:    "Bob",
+		Email:          "bob@bobnet.com",
+		Password:       "s3cr3T",
+		DateOfBirthStr: "01.01.2000",
+		Adress: models.Adress{
+			Country: "England",
+		},
+	}
+
+	if uv, err := u.ToUserstructValidated(); err != nil {
+		fmt.Printf("error validating %+v, err=%s\n", u, err)
+	} else {
+		fmt.Printf("validated user %+v", uv)
+	}
+}
+```
