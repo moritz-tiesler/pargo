@@ -60,6 +60,10 @@ import (
 	"time"
 )
 
+// set up you validator once for the package. Its name must be 'VALIDATE'
+// The generated code will reference this validator.
+var VALIDATE = validator.New(validator.WithRequiredStructEnabled())
+
 // point the go generate command to your generate.go file
 //go:generate go run ../generator/generate.go
 type Userstruct struct {
