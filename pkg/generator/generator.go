@@ -121,11 +121,11 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 			// TODO: this is very error prone. either filter imports better
 			// or run goimports on generated code to delete unused imports
 			if importSpec, ok := spec.(*ast.ImportSpec); ok {
-				fmt.Printf("%+v\n", importSpec)
 				importPath := importSpec.Path.Value
 				// Store imports and set false flag.
 				// If import is encoutered in struct, flip the flag to true
 				packageImports[importPath] = false
+				// If import is named, store it
 				if importSpec.Name != nil {
 					packageAliases[importSpec.Name.Name] = importPath
 				}
@@ -291,6 +291,8 @@ func exprToString(
 					imports[imp] = true
 				}
 			}
+			// If package is accessed via named import (alias), flip
+			// its path to true
 			for al, path := range aliases {
 				if pkg == al {
 					imports[path] = true
