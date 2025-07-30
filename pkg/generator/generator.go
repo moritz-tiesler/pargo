@@ -63,7 +63,7 @@ func (td *TemplateData) ToSource() (bytes.Buffer, error) {
 	if len(td.PackageImports) > 0 {
 		buf.WriteString("import (\n")
 		for imp := range td.PackageImports {
-			buf.WriteString(fmt.Sprintf("\"%s\"\n", imp))
+			buf.WriteString(fmt.Sprintf("%s\n", imp))
 		}
 		buf.WriteString(")\n")
 	}
@@ -103,7 +103,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 	packageImports := make(map[string]bool)
 
 	// Always need these for validation
-	packageImports["fmt"] = true
+	packageImports["\"fmt\""] = true
 
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
@@ -172,9 +172,8 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 				InputTypeName:  inputTypeName,
 				DomainTypeName: domainTypeName,
 				PackageName:    node.Name.Name,
-				// Imports:        packageImports,
-				InputFields:  inputFields,
-				DomainFields: domainFields,
+				InputFields:    inputFields,
+				DomainFields:   domainFields,
 			})
 		}
 	}
@@ -223,10 +222,8 @@ type StructData struct {
 	InputTypeName  string
 	DomainTypeName string
 	PackageName    string
-	// Imports        map[string]struct{} // Collect unique imports needed by generated code
-
-	InputFields  []*InputFieldData  // Fields of the Input struct
-	DomainFields []*DomainFieldData // Fields for the generated Domain struct
+	InputFields    []*InputFieldData  // Fields of the Input struct
+	DomainFields   []*DomainFieldData // Fields for the generated Domain struct
 }
 
 // InputFieldData represents a field in the Input struct.
@@ -267,10 +264,16 @@ func exprToString(expr ast.Expr, imports map[string]bool) string {
 	case *ast.Ident:
 		return t.Name
 	case *ast.SelectorExpr:
+		// TODO: to make this more robust, one would use
+		// go/importer and go/types
 		if pkgIdent, ok := t.X.(*ast.Ident); ok {
-			pkgPath := pkgIdent.Name
-			imports[pkgPath] = true
-			fmt.Printf("found imports %s\n", pkgPath)
+			pkg := pkgIdent.Name
+			for imp := range imports {
+				if "\""+pkg+"\"" == imp || strings.HasSuffix(imp, "/"+pkg+"\"") {
+					imports[imp] = true
+				}
+			}
+			return exprToString(t.X, imports) + "." + t.Sel.Name
 		}
 		return exprToString(t.X, imports) + "." + t.Sel.Name
 	case *ast.StarExpr:
