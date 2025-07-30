@@ -100,10 +100,10 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 	}
 
 	var allStructData []*StructData
-	packageImports := make(map[string]struct{})
+	packageImports := make(map[string]bool)
 
 	// Always need these for validation
-	packageImports["\"fmt\""] = struct{}{}
+	packageImports["\"fmt\""] = true
 
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
@@ -112,17 +112,22 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 		}
 
 		for _, spec := range genDecl.Specs {
+			// TODO: this is very error prone. either filter imports better
+			// or run goimports on generated code to delete unused imports
 			if importSpec, ok := spec.(*ast.ImportSpec); ok {
 				importPath := importSpec.Path.Value
-				if !strings.Contains(importPath, "go-playground/validator") {
-					packageImports[importPath] = struct{}{}
-				}
+				// Store imports and set false flag.
+				// If import is encoutered in struct, flip the flag to true
+				packageImports[importPath] = false
 			}
 			typeSpec, ok := spec.(*ast.TypeSpec)
 			if !ok {
 				continue
 			}
 			structType, ok := typeSpec.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
 
 			inputTypeName := typeSpec.Name.Name
 			domainTypeName := inputTypeName + "Validated" // e.g., UserInput -> ValidatedUser
@@ -135,7 +140,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 					continue
 				}
 				fieldName := field.Names[0].Name
-				fieldType := exprToString(field.Type)
+				fieldType := exprToString(field.Type, packageImports)
 				validateTagValue := getTagValue(field.Tag, "validate")
 				jsonTagValue := getTagValue(field.Tag, "json")
 
@@ -169,10 +174,15 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 				InputTypeName:  inputTypeName,
 				DomainTypeName: domainTypeName,
 				PackageName:    node.Name.Name,
-				Imports:        packageImports,
 				InputFields:    inputFields,
 				DomainFields:   domainFields,
 			})
+		}
+	}
+
+	for k, v := range packageImports {
+		if !v {
+			delete(packageImports, k)
 		}
 	}
 
@@ -204,7 +214,7 @@ type TemplateData struct {
 	// this name will be added as the package name in the output file
 	Package string
 	// the imports that will be added to the generated source
-	PackageImports map[string]struct{}
+	PackageImports map[string]bool
 	// the directory where go generate is currently executed
 	Cwd string
 }
@@ -214,10 +224,8 @@ type StructData struct {
 	InputTypeName  string
 	DomainTypeName string
 	PackageName    string
-	Imports        map[string]struct{} // Collect unique imports needed by generated code
-
-	InputFields  []*InputFieldData  // Fields of the Input struct
-	DomainFields []*DomainFieldData // Fields for the generated Domain struct
+	InputFields    []*InputFieldData  // Fields of the Input struct
+	DomainFields   []*DomainFieldData // Fields for the generated Domain struct
 }
 
 // InputFieldData represents a field in the Input struct.
@@ -253,18 +261,28 @@ func getTagValue(tag *ast.BasicLit, key string) string {
 	return ""
 }
 
-func exprToString(expr ast.Expr) string {
+func exprToString(expr ast.Expr, imports map[string]bool) string {
 	switch t := expr.(type) {
 	case *ast.Ident:
 		return t.Name
 	case *ast.SelectorExpr:
-		return exprToString(t.X) + "." + t.Sel.Name
+		// TODO: to make this more robust, one would use
+		// go/importer and go/types
+		if pkgIdent, ok := t.X.(*ast.Ident); ok {
+			pkg := pkgIdent.Name
+			for imp := range imports {
+				if "\""+pkg+"\"" == imp || strings.HasSuffix(imp, "/"+pkg+"\"") {
+					imports[imp] = true
+				}
+			}
+		}
+		return exprToString(t.X, imports) + "." + t.Sel.Name
 	case *ast.StarExpr:
-		return "*" + exprToString(t.X)
+		return "*" + exprToString(t.X, imports)
 	case *ast.ArrayType:
-		return "[]" + exprToString(t.Elt)
+		return "[]" + exprToString(t.Elt, imports)
 	case *ast.MapType:
-		return "map[" + exprToString(t.Key) + "]" + exprToString(t.Value)
+		return "map[" + exprToString(t.Key, imports) + "]" + exprToString(t.Value, imports)
 	default:
 		return fmt.Sprintf("interface{} /* UnsupportedType: %T */", expr)
 	}
