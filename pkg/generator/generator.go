@@ -116,6 +116,8 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 			// or run goimports on generated code to delete unused imports
 			if importSpec, ok := spec.(*ast.ImportSpec); ok {
 				importPath := importSpec.Path.Value
+				// Store imports and set false flag.
+				// If import is encoutered in struct, flip the flag to true
 				packageImports[importPath] = false
 			}
 			typeSpec, ok := spec.(*ast.TypeSpec)
