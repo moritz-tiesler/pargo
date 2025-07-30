@@ -63,6 +63,11 @@ func (td *TemplateData) ToSource() (bytes.Buffer, error) {
 	if len(td.PackageImports) > 0 {
 		buf.WriteString("import (\n")
 		for imp := range td.PackageImports {
+			for al, path := range td.PackageAliased {
+				if imp == path {
+					buf.WriteString(fmt.Sprintf("%s ", al))
+				}
+			}
 			buf.WriteString(fmt.Sprintf("%s\n", imp))
 		}
 		buf.WriteString(")\n")
@@ -101,6 +106,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 
 	var allStructData []*StructData
 	packageImports := make(map[string]bool)
+	packageAliases := make(map[string]string)
 
 	// Always need these for validation
 	packageImports["\"fmt\""] = true
@@ -119,6 +125,10 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 				// Store imports and set false flag.
 				// If import is encoutered in struct, flip the flag to true
 				packageImports[importPath] = false
+				// If import is named, store it
+				if importSpec.Name != nil {
+					packageAliases[importSpec.Name.Name] = importPath
+				}
 			}
 			typeSpec, ok := spec.(*ast.TypeSpec)
 			if !ok {
@@ -140,7 +150,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 					continue
 				}
 				fieldName := field.Names[0].Name
-				fieldType := exprToString(field.Type, packageImports)
+				fieldType := exprToString(field.Type, packageImports, packageAliases)
 				validateTagValue := getTagValue(field.Tag, "validate")
 				jsonTagValue := getTagValue(field.Tag, "json")
 
@@ -195,6 +205,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 		StructData:     allStructData,
 		Package:        outputPkg,
 		PackageImports: packageImports,
+		PackageAliased: packageAliases,
 		Cwd:            wd,
 		File:           inputFilePath,
 		OutputFile:     generatedFileName,
@@ -215,6 +226,7 @@ type TemplateData struct {
 	Package string
 	// the imports that will be added to the generated source
 	PackageImports map[string]bool
+	PackageAliased map[string]string
 	// the directory where go generate is currently executed
 	Cwd string
 }
@@ -261,7 +273,11 @@ func getTagValue(tag *ast.BasicLit, key string) string {
 	return ""
 }
 
-func exprToString(expr ast.Expr, imports map[string]bool) string {
+func exprToString(
+	expr ast.Expr,
+	imports map[string]bool,
+	aliases map[string]string,
+) string {
 	switch t := expr.(type) {
 	case *ast.Ident:
 		return t.Name
@@ -275,14 +291,21 @@ func exprToString(expr ast.Expr, imports map[string]bool) string {
 					imports[imp] = true
 				}
 			}
+			// If package is accessed via named import (alias), flip
+			// its path to true
+			for al, path := range aliases {
+				if pkg == al {
+					imports[path] = true
+				}
+			}
 		}
-		return exprToString(t.X, imports) + "." + t.Sel.Name
+		return exprToString(t.X, imports, aliases) + "." + t.Sel.Name
 	case *ast.StarExpr:
-		return "*" + exprToString(t.X, imports)
+		return "*" + exprToString(t.X, imports, aliases)
 	case *ast.ArrayType:
-		return "[]" + exprToString(t.Elt, imports)
+		return "[]" + exprToString(t.Elt, imports, aliases)
 	case *ast.MapType:
-		return "map[" + exprToString(t.Key, imports) + "]" + exprToString(t.Value, imports)
+		return "map[" + exprToString(t.Key, imports, aliases) + "]" + exprToString(t.Value, imports, aliases)
 	default:
 		return fmt.Sprintf("interface{} /* UnsupportedType: %T */", expr)
 	}
