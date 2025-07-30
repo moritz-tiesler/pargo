@@ -273,7 +273,6 @@ func exprToString(expr ast.Expr, imports map[string]bool) string {
 					imports[imp] = true
 				}
 			}
-			return exprToString(t.X, imports) + "." + t.Sel.Name
 		}
 		return exprToString(t.X, imports) + "." + t.Sel.Name
 	case *ast.StarExpr:
