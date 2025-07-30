@@ -63,7 +63,7 @@ func (td *TemplateData) ToSource() (bytes.Buffer, error) {
 	if len(td.PackageImports) > 0 {
 		buf.WriteString("import (\n")
 		for imp := range td.PackageImports {
-			buf.WriteString(fmt.Sprintf("%s\n", imp))
+			buf.WriteString(fmt.Sprintf("\"%s\"\n", imp))
 		}
 		buf.WriteString(")\n")
 	}
@@ -103,7 +103,7 @@ func (g Generator) GenerateData() (*TemplateData, error) {
 	packageImports := make(map[string]bool)
 
 	// Always need these for validation
-	packageImports["\"fmt\""] = true
+	packageImports["fmt"] = true
 
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
