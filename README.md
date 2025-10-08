@@ -33,7 +33,7 @@ func main() {
 	gen := generator.Generator{}
 
 	fmt.Println("invoking pargo generator")
-    	newFile, err := gen.Generate()
+	newFile, err := gen.Generate()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,6 +55,8 @@ package models
 
 import (
 	"time"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // set up you validator once for the package. Its name must be 'VALIDATE'
